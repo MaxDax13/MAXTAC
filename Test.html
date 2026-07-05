@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>APC Tiegermücken Bekämpfung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.92);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --border: rgba(255,255,255,0.12);
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --teal: #14b8a6;
+      --red: #ef4444;
+      --gray: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    #app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    button.active-mode {
+      background: #f59e0b !important;
+      box-shadow:
+      0 0 0 3px rgba(245,158,11,0.4),
+      0 0 25px rgba(245,158,11,0.7);
+      transform: scale(1.03);
+    }
+
+    #toolbar {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: clamp(8px, 1.4vw, 16px);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(clamp(120px, 18vw, 230px), 1fr));
+      gap: clamp(7px, 1.2vw, 14px);
+      z-index: 1000;
+    }
+
+    button,
+    label.button {
+      border: none;
+      border-radius: clamp(10px, 1.8vw, 18px);
+      padding: clamp(10px, 1.8vw, 18px);
+      min-height: clamp(48px, 7vh, 74px);
+      color: white;
+      font-size: clamp(14px, 2.2vw, 22px);
+      font-weight: 750;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(5px, 1vw, 10px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.25);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    button:active,
+    label.button:active {
+      transform: scale(0.97);
+    }
+
+    #photoButton {
+      background: var(--green);
+      grid-column: span 2;
+    }
+
+    #manualButton { background: var(--blue); }
+    #mapModeButton { background: #334155; }
+    #importButton { background: var(--gray); }
+    #exportJsonButton { background: var(--purple); }
+    #exportCsvButton { background: var(--teal); }
+    #clearButton { background: var(--red); }
+
+    #mapWrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    #bottomInfo {
+      position: absolute;
+      left: clamp(10px, 2vw, 22px);
+      right: clamp(10px, 2vw, 22px);
+      bottom: clamp(10px, 2vw, 22px);
+      z-index: 900;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: clamp(14px, 2vw, 24px);
+      padding: clamp(10px, 1.8vw, 18px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+    }
+
+    #title {
+      font-size: clamp(17px, 2.6vw, 30px);
+      font-weight: 850;
+      line-height: 1.15;
+    }
+
+    #status {
+      font-size: clamp(13px, 1.8vw, 20px);
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.25;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 14px;
+    }
+
+    .leaflet-popup-tip {
+      background: #111827;
+    }
+
+    .preview {
+      width: min(280px, 65vw);
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+
+    .badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #374151;
+      color: #e5e7eb;
+      font-size: 13px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 700px) {
+      #toolbar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      #photoButton {
+        grid-column: 1 / -1;
+      }
+
+      #bottomInfo {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      #status {
+        text-align: left;
+      }
+    }
+
+    @media (min-width: 1100px) {
+      #toolbar {
+        grid-template-columns: 2fr repeat(6, 1fr);
+      }
+
+      #photoButton {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <div id="toolbar">
+    <button id="photoButton">📷 Foto an aktueller Position</button>
+    <button id="manualButton">📍 Manuell</button>
+    <button id="mapModeButton">☀️ Light</button>
+    <label for="importInput" id="importButton" class="button">📂 Öffnen</label>
+    <input type="file" id="importInput" accept=".json,application/json">
+
+    <button id="exportJsonButton">💾 JSON</button>
+    <button id="exportCsvButton">📄 CSV</button>
+    <button id="clearButton">🗑️ Löschen</button>
+  </div>
+
+  <input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+  <div id="mapWrap">
+    <div id="map"></div>
+
+    <div id="bottomInfo">
+      <div id="title">APC Tiegermücken Bekämpfung</div>
+      <div id="status">GPS wird gesucht...</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const lightTiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 20,
+    attribution: "&copy; OpenStreetMap"
+  });
+
+  const darkTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 20,
+    attribution: "&copy; OpenStreetMap &copy; CARTO"
+  });
+
+  const map = L.map("map", {
+    zoomControl: false,
+    layers: [lightTiles]
+  }).setView([49.4521, 11.0767], 13); // Nürnberg als Fallback
+
+
+  L.control.zoom({
+    position: "bottomright"
+  }).addTo(map);
+
+  let isDarkMode = false;
+  let currentPosition = null;
+let pendingPosition = null;
+let manualMode = false;
+let markers = [];
+let hasCenteredOnGPS = false;
+
+  const statusEl = document.getElementById("status");
+  const cameraInput = document.getElementById("cameraInput");
+  const mapModeButton = document.getElementById("mapModeButton");
+
+  function startGPS() {
+    if (!navigator.geolocation) {
+      statusEl.textContent = "GPS wird nicht unterstützt.";
+      return;
+    }
+
+    navigator.geolocation.watchPosition(
+      pos => {
+        currentPosition = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+
+	if (!hasCenteredOnGPS) {
+  		map.setView([currentPosition.lat, currentPosition.lng], 17);
+  		hasCenteredOnGPS = true;
+	}
+
+        statusEl.textContent =
+          "GPS aktiv · Genauigkeit ca. " + Math.round(pos.coords.accuracy) + " m";
+      },
+      err => {
+        statusEl.textContent = "GPS nicht verfügbar · manuell setzen möglich";
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 3000,
+        timeout: 10000
+      }
+    );
+  }
+
+  mapModeButton.onclick = () => {
+    if (isDarkMode) {
+      map.removeLayer(darkTiles);
+      map.addLayer(lightTiles);
+      mapModeButton.textContent = "☀️ Light";
+      isDarkMode = false;
+    } else {
+      map.removeLayer(lightTiles);
+      map.addLayer(darkTiles);
+      mapModeButton.textContent = "🌙 Dark";
+      isDarkMode = true;
+    }
+  };
+
+  document.getElementById("photoButton").onclick = () => {
+    if (!currentPosition) {
+      alert("GPS ist nicht verfügbar. Bitte 'Manuell' verwenden.");
+      return;
+    }
+
+    pendingPosition = currentPosition;
+    cameraInput.click();
+  };
+
+    const manualButton = document.getElementById("manualButton");
+
+    manualButton.onclick = () => {
+  manualMode = !manualMode;
+
+  manualButton.classList.toggle("active-mode", manualMode);
+
+  statusEl.textContent = manualMode
+    ? "📍 Manueller Modus aktiv – Position auf Karte auswählen"
+    : "GPS aktiv · Manueller Modus aus";
+};
+
+  map.on("click", e => {
+  if (!manualMode) return;
+
+  pendingPosition = {
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    accuracy: "manuell"
+  };
+
+  manualMode = false;
+  manualButton.classList.remove("active-mode");
+
+  statusEl.textContent = "Position gewählt · Foto aufnehmen";
+  cameraInput.click();
+});
+
+function compressImage(file, maxWidth = 900, quality = 0.55) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      img.src = e.target.result;
+    };
+
+    img.onload = () => {
+      const scale = Math.min(maxWidth / img.width, 1);
+      const canvas = document.createElement("canvas");
+
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+cameraInput.onchange = async event => {
+  const file = event.target.files[0];
+  if (!file || !pendingPosition) return;
+
+  const compressedPhoto = await compressImage(file, 900, 0.55);
+
+  const data = {
+    id: crypto.randomUUID(),
+    lat: pendingPosition.lat,
+    lng: pendingPosition.lng,
+    accuracy: pendingPosition.accuracy,
+    photo: compressedPhoto,
+    createdAt: new Date().toISOString()
+  };
+
+  addMarker(data, true);
+  saveMarker(data);
+
+  pendingPosition = null;
+  cameraInput.value = "";
+  statusEl.textContent = "Standort gespeichert.";
+};
+
+function addMarker(data, focus = false) {
+  const accuracyText =
+    data.accuracy === "manuell"
+      ? "manuell gesetzt"
+      : "ca. " + Math.round(data.accuracy) + " m";
+
+  const popup = `
+    <div>
+      <span class="badge">Kontrollpunkt</span><br>
+      <strong>${new Date(data.createdAt).toLocaleString("de-DE")}</strong><br><br>
+      Genauigkeit: ${accuracyText}<br>
+      Lat: ${Number(data.lat).toFixed(6)}<br>
+      Lng: ${Number(data.lng).toFixed(6)}<br>
+      <img class="preview" src="${data.photo}">
+    </div>
+  `;
+
+  const marker = L.marker([data.lat, data.lng])
+    .addTo(map)
+    .bindPopup(popup);
+
+  markers.push(marker);
+
+  if (focus) {
+    marker.openPopup();
+    map.setView([data.lat, data.lng], 18);
+  }
+}
+
+  function getSavedMarkers() {
+    return JSON.parse(localStorage.getItem("apcTigerMarkers")) || [];
+  }
+
+  function setSavedMarkers(data) {
+    localStorage.setItem("apcTigerMarkers", JSON.stringify(data));
+  }
+
+  function saveMarker(data) {
+  try {
+    const saved = getSavedMarkers();
+    saved.push(data);
+    setSavedMarkers(saved);
+  } catch (e) {
+    alert("Speicher voll. Das Foto ist zu groß. Der Pin wurde angezeigt, aber nicht dauerhaft gespeichert.");
+  }
+}
+
+  function clearMapMarkers() {
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+  }
+
+  function loadMarkers() {
+  clearMapMarkers();
+  getSavedMarkers().forEach(item => addMarker(item, false));
+}
+
+  function downloadFile(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("exportJsonButton").onclick = () => {
+    const data = getSavedMarkers();
+
+    downloadFile(
+      "apc-tiegermuecken-kontrolle.json",
+      JSON.stringify(data, null, 2),
+      "application/json"
+    );
+  };
+
+  document.getElementById("exportCsvButton").onclick = () => {
+    const data = getSavedMarkers();
+
+    let csv = "zeit,latitude,longitude,genauigkeit,hat_foto\n";
+
+    data.forEach(item => {
+      csv += `"${item.createdAt}",${item.lat},${item.lng},"${item.accuracy}",ja\n`;
+    });
+
+    downloadFile("apc-tiegermuecken-kontrolle.csv", csv, "text/csv;charset=utf-8");
+  };
+
+  document.getElementById("importInput").onchange = event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      try {
+        const imported = JSON.parse(e.target.result);
+
+        if (!Array.isArray(imported)) {
+          alert("Die Datei ist keine gültige JSON-Datei.");
+          return;
+        }
+
+        const existing = getSavedMarkers();
+        const merged = [...existing, ...imported];
+
+        setSavedMarkers(merged);
+        loadMarkers();
+
+        statusEl.textContent = imported.length + " Einträge importiert.";
+      } catch (error) {
+        alert("Datei konnte nicht geöffnet werden.");
+      }
+    };
+
+    reader.readAsText(file);
+    event.target.value = "";
+  };
+
+  document.getElementById("clearButton").onclick = () => {
+    if (!confirm("Alle gespeicherten Marker löschen?")) return;
+
+    clearMapMarkers();
+    localStorage.removeItem("apcTigerMarkers");
+    statusEl.textContent = "Alle Marker gelöscht.";
+  };
+
+  startGPS();
+  loadMarkers();
+</script>
+
+</body>
+</html>
