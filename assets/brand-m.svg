@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-labelledby="title">
   <title id="title">MAXTAC M</title>
-  <rect x="2" y="2" width="60" height="60" rx="2" fill="#f3e600"/>
-  <path fill="#080909" d="M12 51V13h11l9 14 9-14h11v38H41V31L32 45 23 31v20H12Z"/>
+  <rect width="500" height="500" fill="#000"/>
+  <path fill="#ffed00" d="M52 75h364l44 91v241q0 10-10 10H84l-42-83V85q0-10 10-10Z"/>
+  <path fill="#050505" d="M187 148h129q11 0 6 11l-64 132q-8 15-16 0l-62-132q-5-11 7-11Z"/>
+  <path fill="#050505" d="m275 258 80 159h-49l-57-119Z"/>
+  <path fill="#050505" d="M122 216q-7 0-7 8v136q0 8 8 8h30l25 49H84l-42-83V257l73 147V224q0-8 7-8Zm258 0q8 0 8 8v136q0 8-8 8h-52l-13-26 59-122q2-4 6-4Z"/>
 </svg>

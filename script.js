@@ -90,6 +90,7 @@ if (reducedMotion.matches) {
   if ('IntersectionObserver' in window && heroVisual) {
     new IntersectionObserver(([entry]) => {
       heroAnimationVisible = entry.isIntersecting;
+      heroVisual.classList.toggle('is-paused', !entry.isIntersecting);
       if (!heroAnimationVisible && heroAnimationFrame) {
         cancelAnimationFrame(heroAnimationFrame);
         heroAnimationFrame = 0;
@@ -313,3 +314,14 @@ if ('IntersectionObserver' in window && solutionSlider) {
   }, { threshold: .1 }).observe(solutionSlider);
 }
 startSolutionAutoplay();
+
+const projectForm = document.querySelector('#project-form');
+projectForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const formData = new FormData(projectForm);
+  const projectType = String(formData.get('projectType') || 'Sicherheitstechnik');
+  const message = String(formData.get('message') || '').trim();
+  const subject = `Projektanfrage: ${projectType}`;
+  const body = [`Vorhaben: ${projectType}`, '', message || 'Bitte kontaktieren Sie mich für eine unverbindliche Erstberatung.'].join('\n');
+  window.location.href = `mailto:maxinlindau@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+});
