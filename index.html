@@ -7,8 +7,8 @@
     <meta name="theme-color" content="#05070a" />
     <title>MAXTAC | Ihr Objekt. Rundum geschützt.</title>
     <link rel="icon" href="assets/maxtac-m-logo.png" type="image/png" />
-    <link rel="stylesheet" href="styles.css?v=17" />
-    <script src="script.js?v=8" defer></script>
+    <link rel="stylesheet" href="styles.css?v=22" />
+    <script src="script.js?v=11" defer></script>
   </head>
   <body class="cyber-test">
     <a class="skip-link" href="#main">Zum Inhalt springen</a>
@@ -30,6 +30,7 @@
           <a href="#leistungen">Leistungen</a>
           <a href="#ablauf">Ablauf</a>
           <a href="#kontakt">Kontakt</a>
+          <a class="mobile-nav-cta" href="#kontakt">Projekt anfragen</a>
         </nav>
 
         <a class="button button-small header-cta" href="#kontakt">Projekt anfragen</a>
@@ -51,7 +52,7 @@
             </div>
           </div>
 
-          <div class="hero-visual" aria-label="Animierte Bauplanansicht zur Planung von Kamerawinkel und Sichtfeld">
+          <div class="hero-visual" role="img" aria-label="Animierte Bauplanansicht zur Planung von Kamerawinkel und Sichtfeld">
             <div class="status-chip"><i></i> Installation / Planung</div>
             <div class="blueprint-stage">
               <div class="plan-room">
@@ -90,7 +91,7 @@
 
       <section class="trust-strip" aria-label="Leistungsversprechen">
         <div class="shell trust-inner">
-          <p>Planung</p><span>+</span><p>Technik</p><span>+</span><p>Montage</p><span>+</span><p>Service</p>
+          <p>Planung</p><span aria-hidden="true">+</span><p>Technik</p><span aria-hidden="true">+</span><p>Montage</p><span aria-hidden="true">+</span><p>Service</p>
         </div>
       </section>
 
@@ -137,7 +138,7 @@
             <p class="eyebrow"><span></span>Kostenlose Objektbesichtigung</p>
             <h2 id="survey-title">Erst ansehen.<br />Dann planen.</h2>
             <p>
-              MAXTAC sieht sich Ihr Zielgrundstück kostenlos an. Vor Ort erfassen wir die wichtigen Bereiche und planen daraus eine Sicherheitslösung, die wirklich zu Ihrem Objekt passt.
+              MAXTAC sieht sich Ihr Objekt kostenlos vor Ort an. Dabei erfassen wir die wichtigen Bereiche und planen daraus eine Sicherheitslösung, die zu Ihrem Objekt passt.
             </p>
             <ul>
               <li><strong>Standorte</strong><span>Sinnvolle Positionen für Kameras und Sensoren</span></li>
@@ -227,6 +228,7 @@
                 <i class="active"></i><i></i><i></i><i></i><i></i><i></i>
               </div>
               <div class="solution-actions">
+                <span class="solution-swipe-hint" aria-hidden="true">Wischen für weitere Systeme →</span>
                 <button class="solution-arrow" type="button" data-slider-prev aria-label="Vorheriges System">←</button>
                 <button class="solution-arrow" type="button" data-slider-next aria-label="Nächstes System">→</button>
               </div>

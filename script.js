@@ -1,22 +1,39 @@
 const header = document.querySelector('.site-header');
 const menuButton = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('.main-nav');
+const menuLabel = menuButton?.querySelector('.sr-only');
+const mobileNavigation = window.matchMedia('(max-width: 640px)');
 
 const updateHeader = () => header?.classList.toggle('scrolled', window.scrollY > 18);
 updateHeader();
 window.addEventListener('scroll', updateHeader, { passive: true });
 
+const setMenuOpen = (isOpen, restoreFocus = false) => {
+  menuButton?.setAttribute('aria-expanded', String(isOpen));
+  navigation?.classList.toggle('open', isOpen);
+  if (menuLabel) menuLabel.textContent = isOpen ? 'Menü schließen' : 'Menü öffnen';
+  if (restoreFocus) menuButton?.focus();
+};
+
 menuButton?.addEventListener('click', () => {
-  const isOpen = menuButton.getAttribute('aria-expanded') === 'true';
-  menuButton.setAttribute('aria-expanded', String(!isOpen));
-  navigation?.classList.toggle('open', !isOpen);
+  setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true');
 });
 
 navigation?.querySelectorAll('a').forEach((link) => {
-  link.addEventListener('click', () => {
-    menuButton?.setAttribute('aria-expanded', 'false');
-    navigation.classList.remove('open');
-  });
+  link.addEventListener('click', () => setMenuOpen(false));
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && menuButton?.getAttribute('aria-expanded') === 'true') setMenuOpen(false, true);
+});
+
+document.addEventListener('pointerdown', (event) => {
+  if (menuButton?.getAttribute('aria-expanded') !== 'true' || header?.contains(event.target)) return;
+  setMenuOpen(false);
+});
+
+mobileNavigation.addEventListener('change', (event) => {
+  if (!event.matches) setMenuOpen(false);
 });
 
 document.querySelector('#year').textContent = new Date().getFullYear();
@@ -35,6 +52,9 @@ const zoomValue = document.querySelector('#zoom-value');
 const angleValue = document.querySelector('#angle-value');
 const cameraAxes = document.querySelectorAll('.camera-axis');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const heroVisual = document.querySelector('.hero-visual');
+let heroAnimationVisible = true;
+let heroAnimationFrame = 0;
 
 const updateZoom = (time = 0) => {
   if (!zoomGauge || !zoomValue) return;
@@ -56,7 +76,8 @@ const updateZoom = (time = 0) => {
     angleValue.textContent = `${prefix}${Math.abs(angle).toFixed(1).replace('.', ',')}°`;
   }
 
-  if (!reducedMotion.matches) requestAnimationFrame(updateZoom);
+  if (!reducedMotion.matches && heroAnimationVisible) heroAnimationFrame = requestAnimationFrame(updateZoom);
+  else heroAnimationFrame = 0;
 };
 
 if (reducedMotion.matches) {
@@ -65,7 +86,18 @@ if (reducedMotion.matches) {
   if (zoomValue) zoomValue.textContent = '1,5×';
   if (angleValue) angleValue.textContent = '0,0°';
 } else {
-  requestAnimationFrame(updateZoom);
+  heroAnimationFrame = requestAnimationFrame(updateZoom);
+  if ('IntersectionObserver' in window && heroVisual) {
+    new IntersectionObserver(([entry]) => {
+      heroAnimationVisible = entry.isIntersecting;
+      if (!heroAnimationVisible && heroAnimationFrame) {
+        cancelAnimationFrame(heroAnimationFrame);
+        heroAnimationFrame = 0;
+      } else if (heroAnimationVisible && !heroAnimationFrame) {
+        heroAnimationFrame = requestAnimationFrame(updateZoom);
+      }
+    }, { threshold: .05 }).observe(heroVisual);
+  }
 }
 
 const solutionSlider = document.querySelector('[data-solution-slider]');
@@ -82,6 +114,8 @@ let solutionTargetIndex = null;
 let solutionScrollFrame = 0;
 let solutionSettleTimer = 0;
 let solutionAutoplayTimer = 0;
+let solutionAutoplayStartTimer = 0;
+let solutionIsVisible = true;
 let sliderPointerId = null;
 let sliderStartX = 0;
 let sliderStartY = 0;
@@ -92,6 +126,8 @@ let sliderDragDirection = null;
 let sliderDidDrag = false;
 let sliderDragFrame = 0;
 let sliderPendingScroll = 0;
+const SOLUTION_AUTOPLAY_DELAY = 4000;
+const SOLUTION_INTERACTION_DELAY = 6000;
 
 const normalizeSolutionIndex = (index) => {
   if (!solutionSlides.length) return 0;
@@ -150,11 +186,17 @@ const goToSolution = (index) => {
   updateSolutionState(nextIndex);
 };
 
-const stopSolutionAutoplay = () => clearInterval(solutionAutoplayTimer);
-const startSolutionAutoplay = () => {
+const stopSolutionAutoplay = () => {
+  clearTimeout(solutionAutoplayStartTimer);
+  clearInterval(solutionAutoplayTimer);
+};
+const startSolutionAutoplay = (delay = SOLUTION_AUTOPLAY_DELAY) => {
   stopSolutionAutoplay();
-  if (reducedMotion.matches || solutionSlides.length < 2 || document.hidden) return;
-  solutionAutoplayTimer = window.setInterval(() => goToSolution(activeSolution + 1), 5200);
+  if (reducedMotion.matches || solutionSlides.length < 2 || document.hidden || !solutionIsVisible) return;
+  solutionAutoplayStartTimer = window.setTimeout(() => {
+    goToSolution(activeSolution + 1);
+    solutionAutoplayTimer = window.setInterval(() => goToSolution(activeSolution + 1), SOLUTION_AUTOPLAY_DELAY);
+  }, delay);
 };
 
 solutionPrev?.addEventListener('click', () => goToSolution(activeSolution - 1));
@@ -203,7 +245,7 @@ const finishSliderDrag = (event, cancelled = false) => {
   sliderPointerId = null;
   sliderDragDirection = null;
   if (solutionTrack.hasPointerCapture?.(pointerId)) solutionTrack.releasePointerCapture(pointerId);
-  startSolutionAutoplay();
+  startSolutionAutoplay(SOLUTION_INTERACTION_DELAY);
 };
 
 solutionTrack?.addEventListener('pointerdown', (event) => {
@@ -260,9 +302,14 @@ solutionTrack?.addEventListener('click', (event) => {
   sliderDidDrag = false;
 }, true);
 solutionTrack?.addEventListener('dragstart', (event) => event.preventDefault());
-solutionSlider?.addEventListener('mouseenter', stopSolutionAutoplay);
-solutionSlider?.addEventListener('mouseleave', startSolutionAutoplay);
 solutionSlider?.addEventListener('focusin', stopSolutionAutoplay);
-solutionSlider?.addEventListener('focusout', startSolutionAutoplay);
+solutionSlider?.addEventListener('focusout', () => startSolutionAutoplay());
 document.addEventListener('visibilitychange', () => document.hidden ? stopSolutionAutoplay() : startSolutionAutoplay());
+if ('IntersectionObserver' in window && solutionSlider) {
+  new IntersectionObserver(([entry]) => {
+    solutionIsVisible = entry.isIntersecting;
+    if (solutionIsVisible) startSolutionAutoplay();
+    else stopSolutionAutoplay();
+  }, { threshold: .1 }).observe(solutionSlider);
+}
 startSolutionAutoplay();
